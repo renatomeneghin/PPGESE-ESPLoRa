@@ -1,0 +1,16 @@
+idf_component_register(
+    SRCS
+        "main.cpp"
+        "communication/UartReceiver.cpp"
+        "ml/TemperatureClassifier.cpp"
+    INCLUDE_DIRS
+        "."
+        "communication"
+        "data"
+        "ml"
+    REQUIRES
+        driver
+        esp_timer
+        freertos
+        log
+)

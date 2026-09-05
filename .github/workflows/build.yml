@@ -3,13 +3,17 @@ name: Build
 # TODO: update if you want to allow from forked repositories
 on: [pull_request]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 env:
   # TODO: Update the below variables for your project
-  APP_NAME: "Template"
+  APP_NAME: "esp_lora"
   IDF_TARGET: 'esp32'
-  IDF_VERSION: 'v6.0.1'
+  IDF_VERSION: 'v6.1'
   IDF_COMPONENT_MANAGER: "1" # whether to enable the component manager or not
-  FLASH_TOTAL_OVERRIDE: '1500000' # number of bytes of total flash (for percentage calculations)
+  FLASH_TOTAL_OVERRIDE: '2000000' # number of bytes of total flash (for percentage calculations)
 
 jobs:
   build:
