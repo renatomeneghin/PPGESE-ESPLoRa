@@ -80,6 +80,7 @@ struct TelemetryPacket {
     uint8_t event;
 } Packet;
 
+#pragma pack(push, 1)
 struct TelemetryFrame
 {
     uint16_t sync;
@@ -89,7 +90,7 @@ struct TelemetryFrame
 
     int16_t temperature;
     uint32_t pressure;
-    uint16_t altitude;
+    int16_t altitude;
 
     int16_t acceleration;
     int16_t acceleration_filtered;
@@ -98,23 +99,13 @@ struct TelemetryFrame
 
     uint16_t crc;
 };
+#pragma pack(pop)
 
 QueueHandle_t imu_queue;
 SemaphoreHandle_t Packet_mutex;
 
 /* Constant defines -------------------------------------------------------- */
 #define CONVERT_G_TO_MS2    9.80665f
-#define MAX_ACCEPTED_RANGE  2.0f        // starting 03/2022, models are generated setting range to +-2,
-                                        // but this example use Arudino library which set range to +-4g.
-                                        // If you are using an older model, ignore this value and use 4.0f instead
-/** Number sensor axes used */
-#define N_SENSORS     7
-
-/* Private variables ------------------------------------------------------- */
-static const bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
-static float data[N_SENSORS];
-static int8_t fusion_sensors[N_SENSORS];
-static int fusion_ix = 0;
 
 /*
 FIR filter designed with
@@ -150,14 +141,6 @@ static double filter_taps[FILTER_TAP_NUM] = {
   -0.02704833486706803,
   -0.01259277478717816
 };
-
-//MPU6050Data mpu_block[1024]; // Buffer to hold MPU6050 data
-MPU6050Data *mpu_block; // Buffer to hold MPU6050 data
-
-QueueHandle_t mpu_queue = nullptr; // Queue to hold MPU6050 data blocks
-
-
-
 
 void BME280_task(void* argument) {
 
@@ -293,7 +276,7 @@ void DSP_task(void* argument)
                     sample.ax * sample.ax +
                     sample.ay * sample.ay +
                     sample.az * sample.az
-                );
+                ) * CONVERT_G_TO_MS2;
 
             // Apply FIR filter to the acceleration magnitude
             float filtered_acceleration =
@@ -308,9 +291,9 @@ void DSP_task(void* argument)
                 xSemaphoreGive(Packet_mutex);
             }
 
-            nn_buffer[nn_index++] = sample.ax;
-            nn_buffer[nn_index++] = sample.ay;
-            nn_buffer[nn_index++] = sample.az;
+            nn_buffer[nn_index++] = sample.ax * CONVERT_G_TO_MS2;
+            nn_buffer[nn_index++] = sample.ay * CONVERT_G_TO_MS2;
+            nn_buffer[nn_index++] = sample.az * CONVERT_G_TO_MS2;
 
             if (nn_index >= NN_FEATURE_COUNT)
             {
@@ -428,7 +411,7 @@ void lora_task(void* argument) {
         {
             frame.temperature = (int16_t)(Packet.bme_data.temperature * 100.0f);
             frame.pressure = (uint32_t)(Packet.bme_data.pressure * 100.0f);
-            frame.altitude = (uint16_t)(Packet.bme_data.altitude * 100.0f);
+            frame.altitude = (int16_t)(Packet.bme_data.altitude * 100.0f);
             frame.acceleration = (int16_t)(Packet.acceleration * 100.0f);
             frame.acceleration_filtered = (int16_t)(Packet.acceleration_filtered * 100.0f);
             frame.event = Packet.event;
@@ -436,12 +419,10 @@ void lora_task(void* argument) {
             xSemaphoreGive(Packet_mutex);
         }
 
-        //frame.event = data.event;
-
         // CRC será calculado aqui
         frame.crc = calculateCRC16(
             reinterpret_cast<uint8_t*>(&frame),
-            sizeof(frame) - sizeof(frame.crc)
+            offsetof(TelemetryFrame, crc)
         );
 
         Serial.printf("Transmitting LoRa packet...\n");
@@ -452,6 +433,17 @@ void lora_task(void* argument) {
             frame.acceleration,
             frame.acceleration_filtered
         );
+
+        Serial.printf(
+            "Received CRC: 0x%04X | Calculated CRC: 0x%04X\nReceived CRC size: %zu | Received frame size: %zu\n",
+            frame.crc,
+            calculateCRC16(reinterpret_cast<uint8_t*>(&frame),sizeof(frame) - sizeof(frame.crc)),
+            sizeof(frame.crc),
+            sizeof(frame)
+        );        
+
+        Serial.printf("TelemetryFrame size: %d\n", sizeof(TelemetryFrame));
+        Serial.printf("CRC offset: %d\n", offsetof(TelemetryFrame, crc));
         
         int state = radio.transmit(
             (uint8_t*)&frame,
