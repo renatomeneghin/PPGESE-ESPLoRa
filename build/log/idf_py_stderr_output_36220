@@ -1,0 +1,7 @@
+Command: cmake -G Ninja -B C:\Users\renat\Documents\PPGESE\PPGESE-ESPLoRa\build -DPYTHON_DEPS_CHECKED=1 -DPYTHON=C:\Espressif\tools\python\v6.1-beta1\venv\Scripts\python.exe -DESP_PLATFORM=1 -DIDF_TARGET=esp32 -DCCACHE_ENABLE=False C:\Users\renat\Documents\PPGESE\PPGESE-ESPLoRa
+Loading defaults file C:/Users/renat/Documents/PPGESE/PPGESE-ESPLoRa/sdkconfig.defaults...
+NOTE: unknown kconfig symbol 'ESPTOOLPY_FLASH_BAUD_115200' assigned to 'y' in C:/Users/renat/Documents/PPGESE/PPGESE-ESPLoRa/sdkconfig.defaults
+NOTE: unknown kconfig symbol 'ESPTOOLPY_FLASH_BAUD' assigned to '115200' in C:/Users/renat/Documents/PPGESE/PPGESE-ESPLoRa/sdkconfig.defaults
+NOTE: Kconfig parser version: 1
+NOTE: Kconfig defaults policy: use sdkconfig
+NOTE: Status: Finished successfully
